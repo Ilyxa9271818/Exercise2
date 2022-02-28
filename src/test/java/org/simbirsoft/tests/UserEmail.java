@@ -1,35 +1,42 @@
 package org.simbirsoft.tests;
-import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
+import io.restassured.builder.ResponseSpecBuilder;
 import io.restassured.http.ContentType;
-import org.testng.annotations.BeforeMethod;
+import io.restassured.specification.RequestSpecification;
+import io.restassured.specification.ResponseSpecification;
 import org.testng.annotations.Test;
 import org.simbirsoft.pojo.UserPojo;
 import java.util.List;
 import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
-import static org.assertj.core.api.filter.Filters.filter;
 import static org.assertj.core.api.filter.InFilter.in;
 
 public class UserEmail {
 
-    @BeforeMethod
-    public void configureRestAssured() {
-        RestAssured.baseURI = "https://reqres.in/api/users";
-    }
+    RequestSpecification requestSpec =
+            new RequestSpecBuilder()
+                    .setBaseUri("https://reqres.in/api/users")
+                    .setContentType(ContentType.JSON)
+                    .build();
+
+    ResponseSpecification responseSpec =
+            new ResponseSpecBuilder()
+                    .expectStatusCode(200)
+                    .build();
 
     @Test
     public void CheckingTheFirstUser() {
         List<UserPojo> users = given()
-                .contentType(ContentType.JSON)
-                .when().get("?page=1")
+                .spec(requestSpec)
+                .param("page", "1")
+                .when()
+                .get()
                 .then()
-                .statusCode(200)
+                .spec(responseSpec)
                 .extract().jsonPath().getList("data", UserPojo.class);
-        assertThat(filter(users)
-                .and("firstName")
-                .equalsTo("George")
-                .and("lastName")
-                .equalsTo("Bluth").get())
+        assertThat(users)
+                .filteredOn("firstName", in("George"))
+                .filteredOn("lastName", in("Bluth"))
                 .extracting("email")
                 .contains("george.bluth@reqres.in");
     }
@@ -37,10 +44,12 @@ public class UserEmail {
     @Test
     public void CheckingTheSecondUser() {
         List<UserPojo> users = given()
-                .contentType(ContentType.JSON)
-                .when().get("?page=2")
+                .spec(requestSpec)
+                .param("per_page", "100")
+                .when()
+                .get()
                 .then()
-                .statusCode(200)
+                .spec(responseSpec)
                 .extract().jsonPath().getList("data", UserPojo.class);
         assertThat(users)
                 .filteredOn("firstName", in("Michael"))
